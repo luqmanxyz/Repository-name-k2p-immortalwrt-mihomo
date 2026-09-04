@@ -222,60 +222,73 @@ jobs:
 
       - name: Collect K2P firmware
         run: |
+          set -e
 
           mkdir -p output
 
+          echo "========== K2P FIRMWARE FILES =========="
+
           find immortalwrt/bin/targets/ramips/mt7621/ \
+            -maxdepth 1 \
             -type f \
             \( \
-              -name '*phicomm-k2p*' \
+              -name '*phicomm_k2p*sysupgrade.bin' \
               -o \
-              -name '*k2p*' \
+              -name '*phicomm-k2p*sysupgrade.bin' \
+              -o \
+              -name '*k2p*sysupgrade.bin' \
             \) \
             -exec cp {} output/ \;
 
           echo
-          echo "========== GENERATED FILES =========="
+          echo "========== GENERATED K2P SYSUPGRADE =========="
 
-          ls -lh output/
+          ls -lh output/ || true
 
-      - name: Check firmware size
+          if ! ls output/*sysupgrade.bin >/dev/null 2>&1; then
+            echo
+            echo "ERROR: No K2P sysupgrade firmware found."
+            echo
+            echo "Available target files:"
+            find immortalwrt/bin/targets/ramips/mt7621/ \
+              -maxdepth 1 \
+              -type f \
+              -printf '%f\n' | sort
+            exit 1
+          fi
+
+      - name: Check K2P sysupgrade size
         run: |
+          set -e
 
-          echo "========== SIZE CHECK =========="
+          echo "========== K2P SYSUPGRADE SIZE CHECK =========="
 
-          found=0
-
-          for f in output/*; do
+          for f in output/*sysupgrade.bin; do
 
             [ -f "$f" ] || continue
 
-            found=1
-
             size=$(stat -c%s "$f")
+            mib=$(awk "BEGIN {printf \"%.2f\", $size/1048576}")
 
             echo
             echo "File: $f"
             echo "Bytes: $size"
-            echo "MiB: $(awk "BEGIN {printf \"%.2f\", $size/1048576}")"
+            echo "MiB: $mib"
 
             if [ "$size" -gt 15728640 ]; then
               echo
-              echo "ERROR: Firmware exceeds 15 MiB safety limit."
-              echo "K2P firmware partition is about 15.375 MiB."
+              echo "ERROR: K2P sysupgrade firmware exceeds 15 MiB."
+              echo "This firmware is too large for the K2P flash partition."
               exit 1
             fi
 
           done
 
-          if [ "$found" -eq 0 ]; then
-            echo
-            echo "ERROR: No K2P firmware found."
-            exit 1
-          fi
+          echo
+          echo "========== SIZE CHECK PASSED =========="
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
           name: K2P-ImmortalWrt-OpenClash
-          path: output/
+          path: output/*sysupgrade.bin
