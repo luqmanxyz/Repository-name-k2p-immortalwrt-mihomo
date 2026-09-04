@@ -108,32 +108,36 @@ jobs:
           CONFIG_TARGET_ROOTFS_SQUASHFS=y
           CONFIG_TARGET_IMAGES_GZIP=y
 
+          # SquashFS 使用较大块，尽量节省固件空间
+          CONFIG_TARGET_SQUASHFS_BLOCK_SIZE=1024
+
+          # LuCI
           CONFIG_PACKAGE_luci=y
           CONFIG_PACKAGE_luci-base=y
           CONFIG_PACKAGE_luci-compat=y
           CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
 
+          # DNS
           CONFIG_PACKAGE_dnsmasq-full=y
 
-          CONFIG_PACKAGE_firewall4=y
-          CONFIG_PACKAGE_luci-app-firewall=y
-          CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
-
+          # OpenClash
           CONFIG_PACKAGE_luci-app-openclash=y
 
+          # OpenClash dependencies
           CONFIG_PACKAGE_bash=y
           CONFIG_PACKAGE_curl=y
           CONFIG_PACKAGE_ca-bundle=y
           CONFIG_PACKAGE_ip-full=y
-          CONFIG_PACKAGE_ipset=y
           CONFIG_PACKAGE_ruby=y
           CONFIG_PACKAGE_ruby-yaml=y
           CONFIG_PACKAGE_unzip=y
 
+          # OpenClash nftables / TProxy
           CONFIG_PACKAGE_kmod-tun=y
           CONFIG_PACKAGE_kmod-inet-diag=y
           CONFIG_PACKAGE_kmod-nft-tproxy=y
 
+          # IPv6 completely disabled
           CONFIG_IPV6=n
           CONFIG_PACKAGE_ipv6helper=n
 
@@ -149,6 +153,7 @@ jobs:
           # CONFIG_PACKAGE_luci-app-passwall2 is not set
           # CONFIG_PACKAGE_luci-app-ssr-plus is not set
           # CONFIG_PACKAGE_luci-app-homeproxy is not set
+          # CONFIG_PACKAGE_ipset is not set
 
           EOF
 
@@ -169,6 +174,12 @@ jobs:
             .config || true
 
           echo
+          echo "========== OPENCLASH DEPENDENCIES =========="
+          grep -E \
+            'CONFIG_PACKAGE_(bash|curl|ca-bundle|ip-full|ruby|ruby-yaml|unzip)' \
+            .config || true
+
+          echo
           echo "========== OPENCLASH KERNEL DEPS =========="
           grep -E \
             'CONFIG_PACKAGE_kmod-tun|CONFIG_PACKAGE_kmod-nft-tproxy|CONFIG_PACKAGE_kmod-inet-diag' \
@@ -178,6 +189,18 @@ jobs:
           echo "========== IPV6 =========="
           grep -E \
             'CONFIG_IPV6|CONFIG_PACKAGE_ipv6helper' \
+            .config || true
+
+          echo
+          echo "========== SIZE OPTIMIZATION =========="
+          grep \
+            'CONFIG_TARGET_SQUASHFS_BLOCK_SIZE' \
+            .config || true
+
+          echo
+          echo "========== IPSET =========="
+          grep \
+            'CONFIG_PACKAGE_ipset' \
             .config || true
 
       - name: Download sources
@@ -256,7 +279,7 @@ jobs:
             if [ "$size" -gt 15728640 ]; then
               echo
               echo "ERROR: sysupgrade firmware is larger than 15 MiB."
-              echo "The K2P firmware partition is approximately 15.375 MiB."
+              echo "Need to reduce firmware size before flashing."
               exit 1
             fi
 
