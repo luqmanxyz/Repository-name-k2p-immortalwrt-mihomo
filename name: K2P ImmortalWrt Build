@@ -1,0 +1,12 @@
+name: K2P Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Test
+        run: echo "YAML OK"
